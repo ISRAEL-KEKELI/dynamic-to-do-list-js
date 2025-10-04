@@ -6,41 +6,66 @@ document.addEventListener('DOMContentLoaded', function() {
     const taskInput = document.getElementById('task-input');
     const taskList = document.getElementById('task-list');
 
-    // Step 3: Create the addTask Function
-    function addTask() {
-        
-        // Retrieve and trim the value from the task input field
-        const taskText = taskInput.value.trim();
+    // Step 3: Define the Task Removal Logic
+    // This is separated into a function for use during both page load and runtime removal.
+    function handleRemoveTask(listItem, taskText) {
+        // Remove the list item from the DOM
+        taskList.removeChild(listItem);
 
-        // Check if taskText is not empty ("")
+        // Update Local Storage
+        // 1. Get the current tasks array from Local Storage
+        const storedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        
+        // 2. Find the index of the task to be removed
+        const index = storedTasks.indexOf(taskText);
+        
+        // 3. If found, remove it from the array
+        if (index > -1) {
+            storedTasks.splice(index, 1);
+        }
+        
+        // 4. Save the updated array back to Local Storage
+        localStorage.setItem('tasks', JSON.stringify(storedTasks));
+    }
+
+
+    // Step 4: Create the addTask Function (modified to accept taskText and a 'save' flag)
+    // The 'save' flag prevents saving to Local Storage when loading existing tasks.
+    function addTask(taskText, save = true) {
+        
+        // If taskText is empty (only happens when clicking "Add Task" button without input)
+        if (!taskText) {
+            // Retrieve and trim the value from the task input field
+            taskText = taskInput.value.trim();
+        }
+
+        // Check if taskText is not empty
         if (taskText === "") {
             // If empty, prompt the user
-            alert("Please enter a task.");
+            if (save) { // Only alert if this is a user-initiated addition, not page load
+                alert("Please enter a task.");
+            }
             return; // Exit the function
         }
 
-        // --- Task Creation and Removal Logic ---
+        // --- Task Creation ---
 
         // Create a new li element
         const listItem = document.createElement('li');
-        
-        // Set its textContent to taskText (this is the task description)
+        // Set its textContent to taskText
         listItem.textContent = taskText;
 
         // Create a new button element for removing the task
         const removeBtn = document.createElement('button');
-        
         // Set its textContent to "Remove"
         removeBtn.textContent = "Remove";
-        
-        // Give it a class name of 'remove-btn' (using classList.add as mentioned in the prompt's final instruction)
+        // Give it a class name of 'remove-btn'
         removeBtn.classList.add('remove-btn'); 
 
-        // Assign an onclick event to the remove button
-        // When clicked, it removes the parent li element from the taskList
+        // Assign the removal function to the button's click event
         removeBtn.onclick = function() {
-            // The parent element of the button is the li item
-            taskList.removeChild(listItem);
+            // Pass the listItem and the taskText to the reusable removal handler
+            handleRemoveTask(listItem, taskText);
         };
 
         // Append the remove button to the li element
@@ -50,25 +75,53 @@ document.addEventListener('DOMContentLoaded', function() {
         taskList.appendChild(listItem);
 
         // Clear the task input field
-        taskInput.value = "";
+        if (save) {
+            taskInput.value = "";
+        }
+        
+        // --- Saving Tasks to Local Storage (if flag is true) ---
+        if (save) {
+            // 1. Get the current tasks array from Local Storage
+            const storedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+            
+            // 2. Add the new task
+            storedTasks.push(taskText);
+            
+            // 3. Save the updated array back to Local Storage
+            localStorage.setItem('tasks', JSON.stringify(storedTasks));
+        }
+    }
+    
+    // Step 5: Function to Load Tasks from Local Storage
+    function loadTasks() {
+        // Retrieve and parse tasks from Local Storage, defaulting to an empty array
+        const storedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        
+        // Loop through each stored task
+        storedTasks.forEach(taskText => {
+            // Call addTask for each task, setting 'save' to false 
+            // to prevent saving them back to Local Storage (i.e., duplication)
+            addTask(taskText, false); 
+        });
     }
 
-    // Step 4: Attach Event Listeners
 
-    // Add an event listener to addButton that calls addTask when clicked
-    addButton.addEventListener('click', addTask);
+    // Step 6: Attach Event Listeners and Invoke Load Function
+    
+    // Attach listener for 'Add Task' button click
+    addButton.addEventListener('click', () => {
+        // When the button is clicked, we pass the current input value (which is retrieved inside addTask)
+        addTask(taskInput.value.trim(), true); 
+    });
 
-    // Add an event listener to taskInput for the 'keypress' event (Enter key)
+    // Attach listener for 'Enter' key press in the input field
     taskInput.addEventListener('keypress', function(event) {
-        // Check if event.key is equal to 'Enter' before calling addTask
         if (event.key === 'Enter') {
-            addTask();
+            // When Enter is pressed, pass the current input value
+            addTask(taskInput.value.trim(), true);
         }
     });
 
-    // NOTE: The instruction "Invoke the addTask function on DOMContentLoaded" is 
-    // technically met by ensuring all the setup is inside the 'DOMContentLoaded' 
-    // listener, which is the primary purpose of this block. Calling addTask() here
-    // would immediately add an empty task on page load, which is undesirable for 
-    // a production To-Do list, but we follow the structure.
+    // Invoke the load function to display saved tasks upon page load
+    loadTasks();
 });
